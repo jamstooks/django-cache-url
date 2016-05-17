@@ -18,6 +18,7 @@ urlparse.uses_netloc.append('djangopylibmc')
 urlparse.uses_netloc.append('pymemcached')
 urlparse.uses_netloc.append('redis')
 urlparse.uses_netloc.append('hiredis')
+urlparse.uses_netloc.append('bmemcached')
 
 DEFAULT_ENV = 'CACHE_URL'
 
@@ -31,6 +32,7 @@ BACKENDS = {
     'pymemcached': 'django.core.cache.backends.memcached.MemcachedCache',
     'redis': 'django_redis.cache.RedisCache',
     'hiredis': 'django_redis.cache.RedisCache',
+    'bmemcached': 'django_bmemcached.memcached.BMemcached',
 }
 
 
@@ -66,9 +68,9 @@ def parse(url):
 
     config['BACKEND'] = BACKENDS[url.scheme]
 
-    redis_options = {}
+    additional_options = {}
     if url.scheme == 'hiredis':
-        redis_options['PARSER_CLASS'] = 'redis.connection.HiredisParser'
+        additional_options['PARSER_CLASS'] = 'redis.connection.HiredisParser'
 
     # File based
     if not url.netloc:
@@ -90,15 +92,24 @@ def parse(url):
         # Handle multiple hosts
         config['LOCATION'] = ';'.join(url.netloc.split(','))
 
+        user_pass_str = ""
+        if url.username:
+            additional_options['USERNAME'] = url.username
+            user_pass_str = url.username
+        if url.password:
+            additional_options['PASSWORD'] = url.password
+            user_pass_str = "%s:%s" % (user_pass_str, url.password)
+
         if url.scheme in ('redis', 'hiredis'):
-            if url.password:
-                redis_options['PASSWORD'] = url.password
             # Specifying the database is optional, use db 0 if not specified.
             db = path[1:] or '0'
             config['LOCATION'] = "%s:%s:%s" % (url.hostname, url.port, db)
+        elif user_pass_str:
+            # remove the user/pass from the location string if it's present
+            config['LOCATION'] = config['LOCATION'].replace("%s@" % user_pass_str, '')
 
-    if redis_options:
-        config['OPTIONS'] = redis_options
+    if additional_options:
+        config['OPTIONS'] = additional_options
 
     config.update(cache_args)
 
