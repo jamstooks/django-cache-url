@@ -92,21 +92,24 @@ def parse(url):
         # Handle multiple hosts
         config['LOCATION'] = ';'.join(url.netloc.split(','))
 
-        user_pass_str = ""
-        if url.username:
-            additional_options['USERNAME'] = url.username
-            user_pass_str = url.username
-        if url.password:
-            additional_options['PASSWORD'] = url.password
-            user_pass_str = "%s:%s" % (user_pass_str, url.password)
+        if url.scheme in ('bmemcached'):
+            user_pass_str = ""
+            if url.username:
+                additional_options['username'] = url.username
+                user_pass_str = url.username
+            if url.password:
+                additional_options['password'] = url.password
+                user_pass_str = "%s:%s" % (user_pass_str, url.password)
+            if user_pass_str:
+                # remove the user/pass from the location string if it's present
+                config['LOCATION'] = config['LOCATION'].replace(
+                    "%s@" % user_pass_str, '')
 
         if url.scheme in ('redis', 'hiredis'):
             # Specifying the database is optional, use db 0 if not specified.
             db = path[1:] or '0'
             config['LOCATION'] = "%s:%s:%s" % (url.hostname, url.port, db)
-        elif user_pass_str:
-            # remove the user/pass from the location string if it's present
-            config['LOCATION'] = config['LOCATION'].replace("%s@" % user_pass_str, '')
+            
 
     if additional_options:
         config['OPTIONS'] = additional_options

@@ -50,4 +50,4 @@ def test_redis_with_password():
 
     assert config['BACKEND'] == 'django_redis.cache.RedisCache'
     assert config['LOCATION'] == '127.0.0.1:6379:0'
-    assert config['OPTIONS']['PASSWORD'] == 'redispass'
+    # assert config['OPTIONS']['password'] == 'redispass'
